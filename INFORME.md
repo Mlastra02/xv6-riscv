@@ -1,14 +1,19 @@
+# INFORME — Tarea 1 
 Alumnos: Daniel Alvarez
 Max Lastra
 
+## Funcionamiento 
+'getppid() → int'
+-Retorna el PID del padre del proceso llamante.
+-Si no existe el padre retorna -1
+'getancestor(int n) → int'
+-Retorna el PID del ancestro n-ésimo del proceso llamante,
+'n=0'yo', n=1 'padre', etc, n<0 o no existe retorna -1'  
 
-Seguimos las instrucciones de la tarea.
-1.-Clonamos el repositorio a wsl.
-2.-Creamos la rama tarea0
-3.-Despues instalamos las depencencias correctas para poder usarlo con wsl como build-essential, meson, ninja-build, pkg-config, libglib2.0-dev, libpixman-1-dev, python3 y otras mas.
-4.- Continuamos yendo a la carpeta raiz de xv6 para compilar xv6, con make clean && make, make qemu
-5.- Ejecutamos los comandos pedidos 
- 
- Problemas: 
-Los problemas que encontramos es que tuvimos que actualizar qemu ya que el que estaba por defecto era mas antigua de 7.2 por lo cual no se estaba inicializando correctamente (ERROR: Need qemu version >= 7.2)
-Ademas de esto tuvimos problemas por la falta de un modulo y tuvimos que instalarlo (ERROR: python venv creation failed (ensurepip not found))
+
+## Modificaciones realizadas
+En kernel/syscall.h se modificaron los numeros de sycall, SYS_getppid como 22 y SYS_getancestor23, en syscall.c se implementaron las funciones de getppid y getancestor, 
+en user.h estan los "prototipos", usys.pl las entradas, entry("getppid") y entry("getancestors") y finalmente en el makefile se agrega _yosoytupadre.
+
+## Dificultades y soluciones
+El primer problema que se creo en sys_getancestor ya que hubo un error en el argint(), quedo en void, por lo cual se debio cambiar de la manera argint(0,&n) validando n posteriormente.
