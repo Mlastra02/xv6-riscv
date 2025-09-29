@@ -6,6 +6,7 @@ Max Lastra
 'getppid() → int'
 -Retorna el PID del padre del proceso llamante.
 -Si no existe el padre retorna -1
+
 'getancestor(int n) → int'
 -Retorna el PID del ancestro n-ésimo del proceso llamante,
 'n=0'yo', n=1 'padre', etc, n<0 o no existe retorna -1'  
