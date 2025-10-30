@@ -145,7 +145,8 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
-
+  p->tickets = 100; 
+  p->cpu_slices = 0;
   return p;
 }
 
@@ -225,6 +226,9 @@ userinit(void)
   initproc = p;
   
   p->cwd = namei("/");
+  
+  p->tickets = 100;
+  p->cpu_slices = 0;
 
   p->state = RUNNABLE;
 
@@ -418,42 +422,48 @@ wait(uint64 addr)
 void
 scheduler(void)
 {
-  struct proc *p;
   struct cpu *c = mycpu();
 
   c->proc = 0;
   for(;;){
-    // The most recent process to run may have had interrupts
-    // turned off; enable them to avoid a deadlock if all
-    // processes are waiting. Then turn them back off
-    // to avoid a possible race between an interrupt
-    // and wfi.
     intr_on();
-    intr_off();
 
-    int found = 0;
-    for(p = proc; p < &proc[NPROC]; p++) {
+    int total = 0;
+    for(struct proc *p = proc; p < &proc[NPROC]; p++){
       acquire(&p->lock);
-      if(p->state == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
-
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-        found = 1;
+      if(p->state == RUNNABLE){
+        if(p->tickets < 1) p->tickets = 1;
+        total += p->tickets;
       }
       release(&p->lock);
     }
-    if(found == 0) {
-      // nothing to run; stop running on this core until an interrupt.
-      asm volatile("wfi");
+
+    if(total == 0)
+      continue;
+
+    static unsigned long randstate = 1;
+    randstate = randstate * 1664525 + 1013904223;
+    int r = (randstate % total) + 1;
+
+    int acc = 0;
+    for(struct proc *p = proc; p < &proc[NPROC]; p++){
+      acquire(&p->lock);
+      if(p->state == RUNNABLE){
+        acc += p->tickets;
+        if(acc >= r){
+          p->cpu_slices++;
+          p->state = RUNNING;
+          c->proc = p;
+          swtch(&c->context, &p->context);
+          c->proc = 0;
+          release(&p->lock);
+          break;
+        }
+      }
+      release(&p->lock);
     }
   }
+
 }
 
 // Switch to scheduler.  Must hold only p->lock
@@ -678,7 +688,8 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    printf("%d %s %s", p->pid, state, p->name);
+    printf("pid %d state %s tickets %d slices %d\n",
+          p->pid, state, p->tickets, p->cpu_slices);
     printf("\n");
   }
 }

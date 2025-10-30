@@ -123,3 +123,14 @@ sys_getancestor(void)
   }
   return cur ? cur->pid : -1;
 }
+
+uint64
+sys_settickets(void)
+{
+  int n;
+  argint(0, &n);
+  if (n < 1) n = 1;
+  struct proc *p = myproc();
+  p->tickets = n;
+  return 0;
+}
