@@ -35,7 +35,7 @@ Para validar el funcionamiento del algoritmo, se desarrolló un programa de usua
 
 ---
 
-# 2. Explicación de las modificaciones realizadas
+## 2. Explicación de las modificaciones realizadas
 
 Durante la implementación del Lottery Scheduler se modificaron y agregaron los siguientes archivos y líneas de código:
 
