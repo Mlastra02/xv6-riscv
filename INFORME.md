@@ -1,4 +1,4 @@
-# Tarea 2 – Planificador de Procesos en XV6
+ Tarea 2 – Planificador de Procesos en XV6
 **Integrantes:** Max Lastra y Daniel Álvarez  
 
 ---
