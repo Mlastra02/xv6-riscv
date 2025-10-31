@@ -92,8 +92,6 @@ El algoritmo de planificación por lotería ofrece una aproximación equitativa 
 6. **Inadecuado para sistemas de tiempo real:**  
    Al basarse en probabilidades, no puede garantizar tiempos de ejecución exactos ni cumplir con plazos estrictos.
 
-A pesar de estas limitaciones, el Lottery Scheduling es útil en sistemas educativos y de investigación, donde se busca observar el comportamiento estadístico de la asignación de CPU.
-
 ---
 
 ## 5. Conclusión
