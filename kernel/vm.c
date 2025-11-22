@@ -485,3 +485,50 @@ ismapped(pagetable_t pagetable, uint64 va)
   }
   return 0;
 }
+
+int
+change_read_protection(uint64 addr, int len, int enable)
+{
+  struct proc *p = myproc();
+  pte_t *pte;
+  uint64 va;
+  uint64 end;
+
+  // Validación 1: addr alineada a página y len positivo [cite: 31]
+  if(addr % PGSIZE != 0 || len <= 0)
+    return -1;
+
+  // El rango va desde addr hasta addr + len * PGSIZE
+  end = addr + (len * PGSIZE); 
+
+  // Iterar página por página
+  for(va = addr; va < end; va += PGSIZE){
+    
+    // Validación 2: Dentro del espacio de usuario (MAXVA) [cite: 32]
+    if(va >= MAXVA)
+      return -1;
+
+    // Buscar la entrada en la tabla de páginas (PTE)
+    // walk() devuelve la dirección del PTE. El '0' significa "no crear si no existe".
+    pte = walk(p->pagetable, va, 0);
+
+    // Validación 3: Verificar si la página existe (PTE_V) y es de usuario (PTE_U) [cite: 21, 33]
+    if(pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0)
+      return -1;
+
+    // Modificar los bits [cite: 14, 15]
+    if(enable) {
+      // munrdprotect: Activar lectura
+      *pte |= PTE_R; 
+    } else {
+      // mrdprotect: Desactivar lectura (Write-Only)
+      *pte &= ~PTE_R;
+    }
+  }
+  
+  // Es recomendable limpiar la TLB (Translation Lookaside Buffer) después de cambiar permisos.
+  // En xv6 riscv, sfence.vma() se encarga de esto.
+  sfence_vma(); 
+  
+  return 0;
+}

@@ -98,3 +98,34 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64
+sys_mrdprotect(void)
+{
+  uint64 addr;
+  int len;
+
+  // CAMBIO AQUI:
+  // Como argaddr y argint son void, las llamamos sin el if.
+  argaddr(0, &addr);
+  argint(1, &len);
+
+  // Nota: Asumimos que si fallan, tu versión de xv6 mata el proceso
+  // automáticamente dentro de argaddr/argint.
+
+  // Validaciones adicionales de lógica (siguen igual)
+  return change_read_protection(addr, len, 0);
+}
+
+uint64
+sys_munrdprotect(void)
+{
+  uint64 addr;
+  int len;
+
+  // CAMBIO AQUI:
+  argaddr(0, &addr);
+  argint(1, &len);
+
+  return change_read_protection(addr, len, 1);
+}
