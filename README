@@ -1,31 +1,57 @@
-Tarea 3: Protección de Lectura en XV6
-Integrantes: Max Lastra y Daniel Alvarez
+# Tarea 3: Protección de Lectura en XV6
 
-Resumen
-Se implementó un mecanismo de memoria "Write-Only" (Solo Escritura) mediante dos nuevas system calls: mrdprotect y munrdprotect. Esto permite escribir datos sensibles (como claves) y luego revocar el permiso de lectura para protegerlos.
+**Integrantes:** Max Lastra y Daniel Alvarez
 
+## Resumen Ejecutivo
 
-Cambios Realizados
+Se implementó con éxito un mecanismo de **Protección de Lectura** (memoria "Solo Escritura" o Write-Only) en el *kernel* **xv6-riscv**. [cite_start]Esto se logró mediante la adición de dos nuevas llamadas al sistema que manipulan el bit de lectura (`PTE_R`) en las Entradas de la Tabla de Páginas (PTE) de la memoria de usuario. [cite: 1748, 1753]
 
-Lógica (kernel/vm.c): Se creó la función change_read_protection que recorre la tabla de páginas y modifica el bit PTE_R.
+[cite_start]Al intentar leer la memoria protegida, el *hardware* genera una **Falla de Acceso a Página** (`scause 0xf`), lo que obliga al *kernel* a terminar el proceso, cumpliendo el objetivo de proteger datos sensibles. [cite: 1803, 1807]
 
+***
 
+## Diseño e Implementación Técnica
 
-System Calls: Se registraron las llamadas en syscall.h, syscall.c, user.h y usys.pl.
+### 1. Funciones de Llamada al Sistema (System Calls)
 
+Se implementaron las siguientes llamadas al sistema, que invocan la lógica central a través de la interfaz del *kernel* (`sysproc.c`):
 
-Interfaz (kernel/sysproc.c): Se implementó la recepción de argumentos (addr, len) para invocar la lógica del kernel.
+* [cite_start]**`mrdprotect(void *addr, int len)`**: Marca la región como sin lectura, limpiando el bit `PTE_R`. [cite: 1751, 1755]
+    * [cite_start]**Mecanismo en PTE:** `*pte &= ~PTE_R;` [cite: 1778]
+* [cite_start]**`munrdprotect(void *addr, int len)`**: Restaura el permiso de lectura, activando el bit `PTE_R`. [cite: 1752, 1756]
+    * [cite_start]**Mecanismo:** `*pte |= PTE_R;` [cite: 1778]
 
-Dificultades y Soluciones
-1. Error de Compilación en sysproc.c
-Problema: Error void value not ignored al intentar validar argaddr y argint dentro de un if. En nuestra versión de XV6, estas funciones son void y manejan errores internamente.
+### 2. Lógica del Kernel (`kernel/vm.c`)
 
-Solución: Se modificó el código para llamar a estas funciones directamente sin verificar un valor de retorno.
+[cite_start]La lógica central recorre el rango de direcciones virtuales afectado en pasos de `PGSIZE` [cite: 1759, 1760] y realiza las siguientes operaciones en cada PTE:
 
-2. Verificación del Test
-Observación: El programa de prueba rdprotect_test termina abruptamente con un mensaje de usertrap.
+* [cite_start]**Obtención del PTE:** Se utiliza la función `walk` para obtener el puntero a la entrada de la tabla de páginas. [cite: 1777]
+* **Modificación:** Se aplica la operación bit a bit sobre el PTE.
+* **Sincronización:** Es crucial ejecutar `sfence.vma()` tras la modificación del PTE para invalidar las entradas obsoletas en el TLB (Translation Lookaside Buffer), asegurando que el *hardware* aplique el nuevo permiso de inmediato.
 
-Conclusión: Esto confirma el éxito de la tarea. Al intentar leer memoria protegida sin el bit PTE_R, el hardware lanza una excepción (scause 0xf) y el SO termina el proceso, cumpliendo el objetivo de impedir la lectura
+### 3. Manejo de Errores (Validación Rigurosa)
+
+[cite_start]Se implementaron verificaciones al inicio del bucle de recorrido para validar la integridad de los argumentos y la seguridad del sistema[cite: 1768, 1769]:
+
+* [cite_start]**Alineación:** `addr` no debe estar alineada a una página. [cite: 1772]
+* [cite_start]**Longitud:** `len` debe ser positivo (`len > 0`). [cite: 1772]
+* [cite_start]**Mapeo:** La página debe ser válida (`PTE_V` activo). [cite: 1762, 1774]
+* [cite_start]**Dominio de Acceso:** La página debe ser de usuario (`PTE_U` activo) para evitar modificar la memoria del *kernel*. [cite: 1762, 1775]
+
+***
+
+## Análisis de Resultados Obtenidos
+
+La funcionalidad se verificó mediante la ejecución del programa de prueba **`rdprotect_test.c`**, confirmando la terminación del proceso por falla de acceso.
+
+| Etapa | Instrucción Clave | Permisos en PTE (R/W) | Resultado Esperado | Conclusión y Análisis Técnico |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. Protección** | `mrdprotect(addr, 1)` | **R=0, W=1** | Éxito silencioso. | [cite_start]El bit `PTE_R` se limpia, estableciendo el estado de "Solo Escritura". [cite: 1755] |
+| **2. Escritura** | `addr[0] = 'A';` | **R=0, W=1** | Éxito silencioso. | [cite_start]La escritura es exitosa, confirmando que la restricción es solo sobre la lectura. [cite: 1801, 1802] |
+| **3. Intento de Lectura** | `char c = addr[0];` | **R=0** | **Falla (usertrap)**. | El *hardware* detecta la instrucción de lectura prohibida, generando una **Falla de Acceso a Página** (`scause 0xf`). [cite_start]El *kernel* mata el proceso de prueba, impidiendo la lectura. [cite: 1803, 1807] |
+| **4. Reversión** | `munrdprotect(addr, 1)` | **R=1, W=1** | `Protección revertida correctamente.` | [cite_start]La PTE restaura el bit `PTE_R` [cite: 1756][cite_start], y el proceso finaliza normalmente tras la confirmación. [cite: 1814] |
+
+**Conclusión:** La terminación abrupta y el código de falla (`scause 0xf`) en el intento de lectura confirman que el *hardware* está aplicando la restricción de acceso definida por el *kernel*, probando el modelo de memoria "solo escritura" de la tarea.
 
 You will need a RISC-V "newlib" tool chain from
 https://github.com/riscv/riscv-gnu-toolchain, and qemu compiled for
