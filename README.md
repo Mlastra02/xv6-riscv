@@ -54,7 +54,3 @@ La funcionalidad fue probada con el programa **`rdprotect_test.c`**, confirmando
 | **4. Reversión** | `munrdprotect(addr, 1)` | **R=1, W=1** | `Protección revertida correctamente.` | Se restaura el bit `PTE_R` (lectura), y el proceso finaliza normalmente tras la confirmación. |
 
 **Conclusión:** La terminación controlada (`usertrap`) en el intento de lectura confirma que el *hardware* está aplicando la restricción de acceso definida por el *kernel*, probando el modelo de memoria "solo escritura" de la tarea.
-You will need a RISC-V "newlib" tool chain from
-https://github.com/riscv/riscv-gnu-toolchain, and qemu compiled for
-riscv64-softmmu.  Once they are installed, and in your shell
-search path, you can run "make qemu".
