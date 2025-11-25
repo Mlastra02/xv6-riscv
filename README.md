@@ -51,6 +51,4 @@ La funcionalidad fue probada con el programa **`rdprotect_test.c`**, confirmando
 | **1. Protección** | `mrdprotect(addr, 1)` | **R=0, W=1** | Éxito silencioso. | El bit `PTE_R` se limpia, estableciendo el estado de "Solo Escritura". |
 | **2. Escritura** | `addr[0] = 'A';` | **R=0, W=1** | Éxito silencioso. | La escritura es exitosa, confirmando que la restricción es solo sobre la lectura. |
 | **3. Intento de Lectura** | `char c = addr[0];` | **R=0** | **Falla (usertrap)**. | El *hardware* detecta la instrucción de lectura prohibida, generando una **Falla de Acceso a Página** (`scause 0xf`). El *kernel* mata el proceso de prueba, impidiendo la lectura. |
-| **4. Reversión** | `munrdprotect(addr, 1)` | **R=1, W=1** | `Protección revertida correctamente.` | Se restaura el bit `PTE_R` (lectura), y el proceso finaliza normalmente tras la confirmación. |
-
 **Conclusión:** La terminación controlada (`usertrap`) en el intento de lectura confirma que el *hardware* está aplicando la restricción de acceso definida por el *kernel*, probando el modelo de memoria "solo escritura" de la tarea.
